@@ -2,7 +2,7 @@
 
 ## What is does
 
-This extension provides methods to enhance the TypoScript with a userFunc and a check for installed extensions and their version numbers. TYPO3 from version 9.5 to 11.5 is supported.
+This extension provides methods to enhance the TypoScript with a userFunc and a check for installed extensions and their version numbers. TYPO3 from version 9.5 to 13.4 is supported.
 
 Use the forum at https://www.jambage.com to ask questions and find answers.
 The documentation file `manual.odt` is available in the doc folder.

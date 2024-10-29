@@ -1,3 +1,6 @@
+2024-10-29 Franz Holzinger <franz@ttproducts.de>
+    * Support for TYPO3 12 and 13
+
 2022-07-18 Franz Holzinger <franz@ttproducts.de>
     * bugfix issue #2 from Marcus Förster: add a reduced isLoaded() syntax & typo3 11.5 support
 
