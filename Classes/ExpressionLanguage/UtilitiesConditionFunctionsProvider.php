@@ -26,7 +26,7 @@ class UtilitiesConditionFunctionsProvider implements ExpressionFunctionProviderI
     /**
      * @return ExpressionFunction[] An array of Function instances
      */
-    public function getFunctions()
+    public function getFunctions(): array;
     {
         return [
             $this->getUserFunction(),
@@ -46,9 +46,9 @@ class UtilitiesConditionFunctionsProvider implements ExpressionFunctionProviderI
             $result = false;
             if (
                 is_array($arguments) &&
-                isset($arguments['1'])
+                isset($arguments[1])
             ) {
-                $funcName = $arguments['1'];
+                $funcName = $arguments[1];
             }
 
             if (
@@ -62,7 +62,7 @@ class UtilitiesConditionFunctionsProvider implements ExpressionFunctionProviderI
                 $hookObj = new $className;
 
                 if (method_exists($hookObj, 'init')) {
-                    $hookObj->init($arguments['0'], $value);
+                    $hookObj->init($arguments[0], $value);
                 }
 
                 $funcValue = [];
@@ -73,16 +73,16 @@ class UtilitiesConditionFunctionsProvider implements ExpressionFunctionProviderI
                 }
 
                 if (method_exists($hookObj, $funcName)) {
-                    $this->setExistingVariables($arguments['0']);
-                    $result = 
+                    $this->setExistingVariables($arguments[0]);
+                    $result =
                         call_user_func_array([&$hookObj, $funcName], [&$funcValue, &$this]);
                 }
             }
-            
+
             return $result;
         });
     }
-    
+
 
     /**
      * @return ExpressionFunction
