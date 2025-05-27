@@ -26,7 +26,7 @@ class UtilitiesConditionFunctionsProvider implements ExpressionFunctionProviderI
     /**
      * @return ExpressionFunction[] An array of Function instances
      */
-    public function getFunctions(): array;
+    public function getFunctions(): array
     {
         return [
             $this->getUserFunction(),
