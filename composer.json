@@ -8,12 +8,13 @@
     "tt_products"
   ],
   "support": {
-    "issues": "https://github.com/franzholz/patch10011/issues"
+    "issues": "https://github.com"
   },
   "homepage": "https://jambage.com",
   "authors": [
     {
       "name": "Franz Holzinger",
+      "email": "franz@ttproducts.de",
       "role": "Developer",
       "homepage": "https://ttproducts.de"
     }
@@ -22,7 +23,7 @@
     "GPL-2.0-or-later"
   ],
   "require": {
-    "typo3/cms-core": "^13"
+    "typo3/cms-core": "^13 || ^14"
   },
   "autoload": {
     "psr-4": {
@@ -34,7 +35,9 @@
   },
   "extra": {
     "typo3/cms": {
-      "extension-key": "patch10011"
+      "extension-key": "patch10011",
+      "version": "1.0.0",
+      "title": "TypoScript Condition userFunc enhancements"
     }
   }
 }

@@ -1,3 +1,10 @@
+2026-10-15 Franz Holzinger <franz@ttproducts.de>
+    * bug fixes
+    * new feature: Use composer.json instead of ext_emconf.php
+
+2026-08-20 Franz Holzinger <franz@ttproducts.de>
+    * Support for TYPO3 13 and 14
+
 2024-10-29 Franz Holzinger <franz@ttproducts.de>
     * Support for TYPO3 12 and 13
 

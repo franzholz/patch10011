@@ -1,41 +1,143 @@
 <?php
+
 namespace JambageCom\Patch10011\Utility;
 
-/*
- * This file is part of the TYPO3 CMS project.
- *
- * It is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License, either version 2
- * of the License, or any later version.
- *
- * For the full copyright and license information, please read the
- * LICENSE.txt file that was distributed with this source code.
- *
- * The TYPO3 project - inspiring people to share!
- */
-
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility as CoreExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
 
-/**
-* Extension Management functions
-*
-* This class is never instantiated, rather the methods inside is called as functions like
-* JambageCom\Patch10011\Utility\ExtensionManagementUtility::isLoaded('my_extension');
-*
-* @author	Kasper Skårhøj <kasperYYYY@typo3.com>
-* @package TYPO3
-* @subpackage patch10011
-*/
-class ExtensionManagementUtility {
+class ExtensionManagementUtility
+{
+    /**
+     * Gets information for an extension from its composer.json with explicit legacy support
+     *
+     * @param	string		$extKey Extension key
+     * @param	string		$path Predefined path ... needed if you have the extension in another place
+     * @return	array|string	Information array (unless an error occurred)
+     */
+    public static function getExtensionInfo($extKey, $path = '')
+    {
+        $result = '';
+
+        if (!$path) {
+            $path = CoreExtensionManagementUtility::extPath($extKey);
+        }
+
+        if (is_dir($path)) {
+            $file = $path . 'composer.json';
+
+            if (@is_file($file)) {
+                $jsonContent = file_get_contents($file);
+                $extConf = json_decode($jsonContent, true);
+
+                if (is_array($extConf)) {
+                    $eInfo = [];
+                    $composerName = $extConf['name'] ?? '';
+
+                    $eInfo['name'] = $composerName;
+                    $eInfo['description'] = $extConf['description'] ?? '';
+                    $eInfo['type'] = $extConf['type'] ?? '';
+                    $eInfo['homepage'] = $extConf['homepage'] ?? '';
+                    $eInfo['keywords'] = $extConf['keywords'] ?? [];
+                    $eInfo['license'] = $extConf['license'] ?? [];
+
+                    $detectedVersion = '';
+
+                    // 1. Check local composer.json top-level field
+                    if (!empty($extConf['version'])) {
+                        $detectedVersion = $extConf['version'];
+                    }
+
+                    // 2. Check local composer.json extra/typo3/cms block (highly common in TYPO3 legacy)
+                    if (empty($detectedVersion) && !empty($extConf['extra']['typo3/cms']['version'])) {
+                        $detectedVersion = $extConf['extra']['typo3/cms']['version'];
+                    }
+
+                    // 3. Fallback: Check vendor/composer/installed.json only if still empty
+                    if (empty($detectedVersion)) {
+                        $installedJsonPath = GeneralUtility::getFileAbsPath('vendor/composer/installed.json');
+                        if ($composerName && @is_file($installedJsonPath)) {
+                            $installedData = json_decode(file_get_contents($installedJsonPath), true);
+                            $packages = $installedData['packages'] ?? $installedData;
+
+                            if (is_array($packages)) {
+                                foreach ($packages as $package) {
+                                    if (($package['name'] ?? '') === $composerName) {
+                                        $detectedVersion = $package['version'] ?? '';
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (empty($detectedVersion)) {
+                        $detectedVersion = '0.0.0';
+                    }
+
+                    $eInfo['version'] = ltrim($detectedVersion, 'vV');
+
+                    if (!empty($extConf['authors']) && is_array($extConf['authors'])) {
+                        $firstAuthor = $extConf['authors'][0];
+                        $eInfo['author'] = $firstAuthor['name'] ?? '';
+                        $eInfo['author_email'] = $firstAuthor['email'] ?? '';
+                        $eInfo['author_company'] = $firstAuthor['homepage'] ?? '';
+                        $eInfo['author_role'] = $firstAuthor['role'] ?? '';
+                    } else {
+                        $eInfo['author'] = '';
+                        $eInfo['author_email'] = '';
+                        $eInfo['author_company'] = '';
+                        $eInfo['author_role'] = '';
+                    }
+
+                    $eInfo['support'] = $extConf['support'] ?? [];
+                    $eInfo['require'] = $extConf['require'] ?? [];
+                    $eInfo['conflict'] = $extConf['conflict'] ?? [];
+                    $eInfo['suggest'] = $extConf['suggest'] ?? [];
+                    $eInfo['TYPO3_version'] = $extConf['require']['typo3/cms-core'] ?? '';
+
+                    $typo3Extra = $extConf['extra']['typo3/cms'] ?? [];
+                    $eInfo['title'] = $typo3Extra['title'] ?? $eInfo['name'] ?? $extKey;
+                    $eInfo['category'] = $typo3Extra['category'] ?? 'plugin';
+                    $eInfo['state'] = $typo3Extra['state'] ?? 'stable';
+                    $eInfo['extension-key'] = $typo3Extra['extension-key'] ?? $extKey;
+                    $eInfo['manual'] = @is_file($path . '/Documentation/Index.rst') || @is_file($path . '/doc/manual.odt');
+
+                    $result = $eInfo;
+                } else {
+                    $result = 'ERROR: The file composer.json contains invalid JSON: ' . $file;
+                }
+            } else {
+                $result = 'ERROR: No composer.json file found at: ' . $file;
+            }
+        } else {
+            $result = 'ERROR: Path not found: ' . $path;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Standardizes version strings so they can be reliably compared
+     * as strings inside TypoScript expressions (e.g., "03.06.00" > "03.05.99").
+     */
+    public static function makeVersion($versionStr, $placeholder = '')
+    {
+        $versionParts = explode('-', $versionStr);
+        $cleanVersion = $versionParts[0];
+
+        $parts = explode('.', $cleanVersion);
+        $major = isset($parts[0]) ? (int)$parts[0] : 0;
+        $minor = isset($parts[1]) ? (int)$parts[1] : 0;
+        $patch = isset($parts[2]) ? (int)$parts[2] : 0;
+
+        return sprintf('%02d.%02d.%02d', $major, $minor, $patch);
+    }
+
     /**
     * Parses the version number x.x.x and returns an array with the various parts.
-    *
-    * @param	string		Version code, x.x.x
-    * @param	string		Increase version part: "main", "sub", "dev"
-    * @return	string
     */
-    static public function renderVersion ($v, $raise = '')
+    public static function renderVersion ($v, $raise = '')
     {
         $parts = GeneralUtility::intExplode('.', $v . '..');
         $parts[0] = MathUtility::forceIntegerInRange($parts[0], 0, 999);
@@ -66,98 +168,4 @@ class ExtensionManagementUtility {
 
         return $result;
     }
-
-
-    /**
-    * Returns version information
-    *
-    * @param	string		Version code, x.x.x
-    * @param	string		part: "", "int", "main", "sub", "dev"
-    * @return	string
-    * @see renderVersion()
-    */
-    static public function makeVersion ($v, $mode)
-    {
-        $result = '';
-        $vDat = self::renderVersion($v);
-        if ($mode == '') {
-            $result = sprintf("%02s.%02s.%02s", $vDat['version_main'], $vDat['version_sub'], $vDat['version_dev']);
-        } else {
-            $result = $vDat['version_' . $mode];
-        }
-        return $result;
-    }
-
-
-    /**
-    * Gets information for an extension, eg. version and most-recently-edited-script
-    *
-    * @param	string		Extension key
-    * @param	string		predefined path ... needed if you have the extension in another place
-    * @return	array		Information array (unless an error occured)
-    */
-    static public function getExtensionInfo ($extKey, $path = '')
-    {
-        $result = '';
-
-        if (!$path) {
-            $path = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath($extKey);
-        }
-
-        if (is_dir($path)) {
-            $file = $path . 'ext_emconf.php';
-
-            if (@is_file($file)) {
-                $_EXTKEY = $extKey;
-                $EM_CONF = [];
-                include($file);
-
-                $eInfo = [];
-                $fieldArray = [
-                    'author',
-                    'author_company',
-                    'author_email',
-                    'category',
-                    'constraints',
-                    'description',
-                    'lastuploaddate',
-                    'state',
-                    'title',
-                    'version'
-                ];
-                $extConf = $EM_CONF[$extKey];
-
-                if (isset($extConf) && is_array($extConf)) {
-                    foreach ($extConf as $field => $value) {
-                        if (in_array($field, $fieldArray)) {
-                            $eInfo[$field] = $value;
-                        }
-                    }
-
-                    foreach ($fieldArray as $field) {
-                        // Info from emconf:
-                        $eInfo[$field] = $extConf[$field];
-                    }
-
-                    if (is_array($extConf['constraints']) && is_array($EM_CONF[$extKey]['constraints']['depends'])) {
-                        $eInfo['TYPO3_version'] = $extConf['constraints']['depends']['typo3'];
-                    } else {
-                        $eInfo['TYPO3_version'] = $extConf['TYPO3_version'];
-                    }
-                    $filesHash = unserialize($extConf['_md5_values_when_last_written']);
-                    $eInfo['manual'] = @is_file($path . '/Documentation/Index.rst') || @is_file($path . '/doc/manual.odt');
-                    $result = $eInfo;
-                } else {
-                    $result = 'ERROR: The array $EM_CONF is wrong in file: ' . $file;
-                }
-            } else {
-                $result = 'ERROR: No emconf.php file: ' . $file;
-            }
-        } else {
-            $result = 'ERROR: Path not found: ' . $path;
-        }
-
-        return $result;
-    }
 }
-
